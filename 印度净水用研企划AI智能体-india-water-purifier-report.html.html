@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>印度净水器业务分析框架</title>
+
+  <style>
+    :root {
+      --primary-dark: #0f4c81;
+      --primary: #1a73c5;
+      --primary-light: #00b4d8;
+
+      --text-main: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+
+      --bg-page: #f0f4f8;
+      --bg-card: #ffffff;
+      --bg-soft: #f8faff;
+      --bg-pale: #eaf5ff;
+
+      --border: #e2e8f0;
+      --border-light: #edf2f7;
+
+      --shadow-drawer: 4px 0 18px rgba(15, 76, 129, .12);
+      --shadow-soft: 0 2px 8px rgba(15, 76, 129, .08);
+
+      --drawer-width: 260px;
+      --drawer-collapsed-width: 64px;
+
+      --radius-sm: 8px;
+      --radius-md: 10px;
+      --radius-card: 12px;
+      --radius-pill: 999px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-main);
+      overflow: hidden;
+    }
+
+    .app {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top left, rgba(0, 180, 216, .12), transparent 32%),
+        linear-gradient(180deg, #f8fbff 0%, #f0f4f8 42%, #edf3f8 100%);
+    }
+
+    /* ───────── Layout ───────── */
+    .workspace {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      min-height: 0;
+    }
+
+    /* ───────── Side Drawer ───────── */
+    .drawer {
+      width: var(--drawer-width);
+      height: 100%;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, .96);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow-drawer);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width .28s ease;
+      z-index: 20;
+    }
+
+    .drawer.collapsed {
+      width: var(--drawer-collapsed-width);
+    }
+
+    .drawer-header {
+      height: 64px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, #f4f9ff 0%, #ffffff 100%);
+      flex-shrink: 0;
+    }
+
+    .drawer-title {
+      min-width: 0;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .drawer-title h2 {
+      color: var(--primary-dark);
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .drawer-title span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .drawer.collapsed .drawer-title {
+      opacity: 0;
+      width: 0;
+      transform: translateX(-8px);
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .drawer-toggle {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #ffffff;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 10px rgba(26, 115, 197, .22);
+      transition: transform .24s ease, box-shadow .2s ease, filter .2s ease;
+    }
+
+    .drawer-toggle:hover {
+      filter: brightness(1.03);
+      box-shadow: 0 6px 14px rgba(26, 115, 197, .28);
+    }
+
+    .drawer.collapsed .drawer-toggle {
+      transform: rotate(180deg);
+    }
+
+    .drawer-menu {
+      flex: 1;
+      min-height: 0;
+      padding: 12px 10px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .drawer-menu::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .drawer-menu::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .drawer-item {
+      position: relative;
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+      padding: 11px 10px;
+      margin-bottom: 8px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      transition: all .2s ease;
+    }
+
+    .drawer-item:hover {
+      background: #f8faff;
+      color: var(--primary);
+    }
+
+    .drawer-item.active {
+      color: var(--primary-dark);
+      background: linear-gradient(90deg, #eaf5ff 0%, #f8fbff 100%);
+      box-shadow: inset 0 0 0 1px #cfe8ff;
+    }
+
+    .drawer-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 9px;
+      bottom: 9px;
+      width: 3px;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(180deg, var(--primary), var(--primary-light));
+    }
+
+    .item-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      background: #eaf5ff;
+      color: var(--primary-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      transition: all .2s ease;
+    }
+
+    .drawer-item.active .item-icon {
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      box-shadow: 0 4px 10px rgba(26, 115, 197, .18);
+    }
+
+    .item-text {
+      min-width: 0;
+      flex: 1;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .item-text strong {
+      display: block;
+      font-size: 13.5px;
+      line-height: 1.3;
+      font-weight: 800;
+      color: inherit;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-text span {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .drawer.collapsed .drawer-header {
+      justify-content: center;
+      padding: 0;
+    }
+
+    .drawer.collapsed .drawer-menu {
+      padding: 12px 8px;
+    }
+
+    .drawer.collapsed .drawer-item {
+      justify-content: center;
+      padding: 11px 0;
+      gap: 0;
+    }
+
+    .drawer.collapsed .drawer-item.active::before {
+      left: 2px;
+      top: 10px;
+      bottom: 10px;
+    }
+
+    .drawer.collapsed .item-text {
+      display: none;
+    }
+
+    .drawer.collapsed .drawer-item::after {
+      content: attr(data-title);
+      position: fixed;
+      left: calc(var(--drawer-collapsed-width) + 10px);
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: #111827;
+      color: #ffffff;
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: nowrap;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .18);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-4px);
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 99;
+    }
+
+    .drawer.collapsed .drawer-item:hover::after {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .drawer-footer {
+      padding: 11px 14px;
+      border-top: 1px solid var(--border-light);
+      background: #ffffff;
+      color: var(--text-muted);
+      font-size: 11px;
+      line-height: 1.45;
+      flex-shrink: 0;
+      transition: opacity .18s ease, height .22s ease, padding .22s ease;
+    }
+
+    .drawer.collapsed .drawer-footer {
+      opacity: 0;
+      height: 0;
+      padding: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* ───────── Content ───────── */
+    .content {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: transparent;
+    }
+
+    .iframe-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      padding: 8px;
+      overflow: hidden;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #ffffff;
+      display: block;
+      box-shadow: 0 2px 8px rgba(15, 76, 129, .06);
+    }
+
+    /* Loading */
+    .loading-overlay {
+      position: absolute;
+      inset: 8px;
+      z-index: 5;
+      border-radius: 12px;
+      background: rgba(240, 244, 248, .92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 13px;
+      transition: opacity .2s ease;
+    }
+
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .spinner {
+      width: 38px;
+      height: 38px;
+      border: 3px solid #e2e8f0;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    ::-webkit-scrollbar {
+      height: 5px;
+      width: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    @media (max-width: 768px) {
+      :root {
+        --drawer-width: 230px;
+        --drawer-collapsed-width: 56px;
+      }
+
+      .drawer:not(.collapsed) {
+        width: min(var(--drawer-width), 82vw);
+      }
+
+      .drawer-header {
+        height: 58px;
+      }
+
+      .iframe-wrap {
+        padding: 6px;
+      }
+
+      .loading-overlay {
+        inset: 6px;
+      }
+
+      iframe {
+        border-radius: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="workspace">
+      <!-- 左侧侧边抽屉 -->
+      <aside class="drawer" id="drawer">
+        <div class="drawer-header">
+          <div class="drawer-title">
+            <h2>印度市场净水品类</h2>
+            <span>产品策略分析</span>
+          </div>
+          <button class="drawer-toggle" id="drawerToggle" title="展开 / 收起">
+            ‹
+          </button>
+        </div>
+
+        <nav class="drawer-menu">
+          <button
+            class="drawer-item active"
+            data-title="用户洞察"
+            data-url="https://aigc.midea.com/dify2/server/files/tools/db7d7d6e-e72d-4565-ad43-a9f0dba518b2.html?timestamp=1781874663&nonce=0eb7307a30f975aa15a417ae260ce08f&sign=ycQjohloyt0oEKnyOeorskAlpjbj3qDEzRsEZgG_TcQ="
+          >
+            <span class="item-icon">👥</span>
+            <span class="item-text">
+              <strong>用户洞察</strong>
+              <span>评论分析与机会洞察</span>
+            </span>
+          </button>
+
+          <button
+            class="drawer-item"
+            data-title="竞对分析"
+            data-url="https://aigc.midea.com/dify2/server/files/tools/332b94ee-31f7-40f6-8fb7-73760e5ca7d6.html?timestamp=1781879654&nonce=a99514ec1c4d22e8458777b8e007c75f&sign=YDgdPr-e24PBMghX4qHvINj3M7fex4Ye67Lep7PpNLE="
+          >
+            <span class="item-icon">⚔️</span>
+            <span class="item-text">
+              <strong>竞对分析</strong>
+              <span>品牌竞争与市场格局</span>
+            </span>
+          </button>
+
+          <button
+            class="drawer-item"
+            data-title="产品线规划"
+            data-url="https://aigc.midea.com/dify2/server/files/tools/976068cf-1e54-411b-987c-0c6489d28acc.html?timestamp=1781874324&nonce=2b30d0b789d9492923307a0fd4a65a16&sign=U6Hm3d7dMbDcgUyembdimVLKk-MVMJo9RqVuLTrOjiE="
+          >
+            <span class="item-icon">🧩</span>
+            <span class="item-text">
+              <strong>产品线规划</strong>
+              <span>SKU组合与上市策略</span>
+            </span>
+          </button>
+
+          <button
+            class="drawer-item"
+            data-title="概念图生成"
+            data-url="https://aigc.midea.com/dify2/server/files/tools/76ef5770-19e1-42e6-a4f4-ed7b7e085068.html?timestamp=1781879990&nonce=f59f4211b7258c2156f32937571415bd&sign=YpKWX9Z2DgLnAlYKaKH6N0O54kN0cGZo4UpIWLa7Rw4="
+          >
+            <span class="item-icon">🎨</span>
+            <span class="item-text">
+              <strong>概念图生成</strong>
+              <span>产品概念与视觉草图</span>
+            </span>
+          </button>
+        </nav>
+
+        <div class="drawer-footer">
+          可展开 / 收起侧边抽屉，右侧内容区域自动适配。
+        </div>
+      </aside>
+
+      <!-- 主内容区域 -->
+      <main class="content">
+        <section class="iframe-wrap">
+          <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <div class="loading-text">内容加载中，请稍候…</div>
+          </div>
+
+          <iframe
+            id="contentFrame"
+            src="https://aigc.midea.com/dify2/server/files/tools/db7d7d6e-e72d-4565-ad43-a9f0dba518b2.html?timestamp=1781874663&nonce=0eb7307a30f975aa15a417ae260ce08f&sign=ycQjohloyt0oEKnyOeorskAlpjbj3qDEzRsEZgG_TcQ="
+            title="分析页面内容"
+            allowfullscreen
+          ></iframe>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const drawer = document.getElementById("drawer");
+    const drawerToggle = document.getElementById("drawerToggle");
+    const drawerItems = document.querySelectorAll(".drawer-item");
+    const iframe = document.getElementById("contentFrame");
+    const loadingOverlay = document.getElementById("loadingOverlay");
+
+    drawerToggle.addEventListener("click", () => {
+      drawer.classList.toggle("collapsed");
+    });
+
+    drawerItems.forEach((item) => {
+      item.addEventListener("click", () => {
+        drawerItems.forEach((i) => i.classList.remove("active"));
+        item.classList.add("active");
+
+        const url = item.dataset.url;
+
+        loadingOverlay.classList.remove("hidden");
+        iframe.src = url;
+      });
+    });
+
+    iframe.addEventListener("load", () => {
+      loadingOverlay.classList.add("hidden");
+    });
+  </script>
+</body>
+</html>
